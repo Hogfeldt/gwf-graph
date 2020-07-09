@@ -16,6 +16,7 @@ setup(
     install_requires=[
         'click',
         'gwf>=1.7.2',
+        'graphviz',
     ],
     
     classifiers=[
