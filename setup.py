@@ -14,6 +14,7 @@ setup(
 
     python_requires=">=3.6",
     install_requires=[
+        'click',
         'gwf>=1.7.2',
     ],
     
