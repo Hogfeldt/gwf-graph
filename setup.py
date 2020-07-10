@@ -4,6 +4,7 @@ setup(
     name='gwf-graph',
     version='0.0.1',
     author="Per Høgfeldt",
+    description='Create a visual representation of the dependency graph in your gwf workflow'
 
     packages=find_packages("src"),
     package_dir={"": "src"},
