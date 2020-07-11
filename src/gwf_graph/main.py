@@ -1,3 +1,6 @@
+from functools import partial
+from itertools import chain
+
 import click
 from graphviz import Digraph
 
@@ -6,6 +9,24 @@ from gwf.filtering import filter_names
 from gwf.exceptions import GWFError
 
 first = lambda p: p[0]
+
+def dfs(graph, root, visited={}):
+    path = []
+    def dfs_inner(node):
+        if node in visited:
+            return
+        visited.add(node)
+        for dep in graph.dependencies[node]:
+            dfs_inner(dep)
+        path.append(node)
+    dfs_inner(root)
+    return path
+
+def visit_all_dependencies(graph, matches):
+    visited = set()
+    paths = map(partial(dfs, graph, visited=visited), matches)
+    for target in chain(*paths):
+        yield target
 
 @click.command()
 @click.argument('targets', nargs=-1)
@@ -25,18 +46,12 @@ def graph(obj, targets, output_type):
 
     if output_type == 'graphviz':
         dot = Digraph(comment='Dependency Graph')
-        visited = set()
-        for root in matches:
-            if root in visited:
-                continue
-            for target in graph.dfs(root):
-                name = target.name
-                if name in visited:
-                    continue
-                dot.node(name, name)    #shape='parallelogram'
-                for dep_target in graph.dependencies[target]:
-                    dot.edge(name, dep_target.name, arrowsize='.5')
-                visited.add(name)
+        for target in visit_all_dependencies(graph, matches):
+            name = target.name
+            dot.node(name, name)    #shape='parallelogram'
+            for dep_target in graph.dependencies[target]:
+                dot.edge(name, dep_target.name, arrowsize='.5')
         dot.render('dependency_graph.gv')
+        
     elif output_type == 'cytoscape':
         pass
