@@ -1,3 +1,4 @@
+import csv
 from functools import partial
 from itertools import chain
 
@@ -52,6 +53,11 @@ def graph(obj, targets, output_type):
             for dep_target in graph.dependencies[target]:
                 dot.edge(name, dep_target.name, arrowsize='.5')
         dot.render('dependency_graph.gv')
-        
     elif output_type == 'cytoscape':
-        pass
+        with open('dependency_graph.sif', 'w') as fp:
+            writer = csv.writer(fp, delimiter=' ')
+            for target in visit_all_dependencies(graph, matches):
+                name = target.name
+                dependencies = list(map(lambda d: d.name, graph.dependencies[target]))
+                if dependencies:
+                    writer.writerow([name, 'dependencies'] + dependencies)
