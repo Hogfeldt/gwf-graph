@@ -18,13 +18,9 @@ def graph(obj, targets):
     matches = graph.targets.values()
     if targets:
         matches = filter_names(matches, targets)
-        # TODO: Consider if the check below is useful, it would make sure
-        #       that no empty pdf is created.
-        #
-        # Check for non existing targets
-        #for target in targets:
-        #    if target not in matches:
-        #        raise GWFError(f'No target named {target} found in workflow')
+        # Prevent drawing an empty graph
+        if not matches:
+            raise GWFError('Non of the targets was found in the workflow')
 
     dot = Digraph(comment='Dependency Graph')
     visited = set()
@@ -37,6 +33,6 @@ def graph(obj, targets):
                 continue
             dot.node(name, name)    #shape='parallelogram'
             for dep_target in graph.dependencies[target]:
-                dot.edge(name, dep_target.name)
+                dot.edge(name, dep_target.name, arrowsize='.5')
             visited.add(name)
     dot.render('dependency_graph.gv')
