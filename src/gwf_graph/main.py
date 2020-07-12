@@ -5,10 +5,10 @@ from itertools import chain
 import click
 from graphviz import Digraph
 
-from gwf.core import Graph
+from gwf.core import Graph, Scheduler, TargetStatus
 from gwf.filtering import filter_names
 from gwf.exceptions import GWFError
-
+from gwf.backends import Backend
 
 def dfs(graph, root, visited={}):
     path = []
@@ -31,14 +31,20 @@ def visit_all_dependencies(graph, matches):
     for target in chain(*paths):
         yield target
 
+status_colors = {TargetStatus.SHOULDRUN: 'purple', 
+        TargetStatus.SUBMITTED: 'yellow', 
+        TargetStatus.RUNNING: 'blue', 
+        TargetStatus.COMPLETED: 'green'}
+
 
 @click.command()
 @click.argument("targets", nargs=-1)
 @click.option(
     "--output-type", type=click.Choice(["graphviz", "cytoscape"]), default="graphviz"
 )
+@click.option('--status/--no-status', default=False)
 @click.pass_obj
-def graph(obj, targets, output_type):
+def graph(obj, targets, output_type, status):
     graph = Graph.from_config(obj)
 
     # If targets supplyed only show dependencies for thoes targets
@@ -49,16 +55,28 @@ def graph(obj, targets, output_type):
         # Prevent drawing an empty graph
         if not matches:
             raise GWFError("Non of the targets was found in the workflow")
+    if status:
+        status_dict = dict()
+        # This plugin only works for SlurmBackend
+        backend_cls = Backend.from_config(obj)
+        with backend_cls() as backend:
+            scheduler = Scheduler(graph, backend)
+            for target in matches:
+                status_dict[target] = scheduler.status(target)
 
     if output_type == "graphviz":
         dot = Digraph(
             comment="Dependency Graph",
             graph_attr={"splines": "curved"},
+            node_attr={'style': 'filled'},
             edge_attr={"arrowsize": ".5"},
         )
         for target in visit_all_dependencies(graph, matches):
             name = target.name
-            dot.node(name, name)  # shape='parallelogram'
+            color = 'white'
+            if status:
+                color = status_colors[status_dict[target]]
+            dot.node(name, name, fillcolor=color)  # shape='parallelogram'
             for dep_target in graph.dependencies[target]:
                 dot.edge(name, dep_target.name)
         dot.render("dependency_graph.gv")
