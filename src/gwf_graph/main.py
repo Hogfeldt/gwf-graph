@@ -51,12 +51,16 @@ def graph(obj, targets, output_type):
             raise GWFError("Non of the targets was found in the workflow")
 
     if output_type == "graphviz":
-        dot = Digraph(comment="Dependency Graph")
+        dot = Digraph(
+            comment="Dependency Graph",
+            graph_attr={"splines": "curved"},
+            edge_attr={"arrowsize": ".5"},
+        )
         for target in visit_all_dependencies(graph, matches):
             name = target.name
             dot.node(name, name)  # shape='parallelogram'
             for dep_target in graph.dependencies[target]:
-                dot.edge(name, dep_target.name, arrowsize=".5")
+                dot.edge(name, dep_target.name)
         dot.render("dependency_graph.gv")
     elif output_type == "cytoscape":
         with open("dependency_graph.sif", "w") as fp:
