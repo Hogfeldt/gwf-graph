@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="gwf-graph",
-    version="0.0.2",
+    version="0.0.3",
     author="Per Høgfeldt",
     description="Create a visual representation of the dependency graph in your gwf workflow",
     packages=find_packages("src"),
