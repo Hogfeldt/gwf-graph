@@ -63,6 +63,26 @@ def sif_format(graph, matches):
     return '\n'.join(lines)
 
 
+def svg_format(graph, matches, status_dict):
+    dot = Digraph(
+        comment="Dependency Graph",
+        graph_attr={"splines": "curved"},
+        node_attr={"style": "filled"},
+        edge_attr={"arrowsize": ".5"},
+    )
+    for target in visit_all_dependencies(graph, matches):
+        name = target.name
+        color = "white"
+        if status_dict != None:
+            color = status_colors[status_dict[target]]
+        dot.node(name, name, fillcolor=color)  # shape='parallelogram'
+        for dep_target in graph.dependencies[target]:
+            dot.edge(name, dep_target.name)
+    #if stdout
+    #    print(dot.source)
+    else:
+        dot.render("dependency_graph.gv", format="svg")
+
 @click.command()
 @click.argument("targets", nargs=-1)
 @click.option(
@@ -81,28 +101,12 @@ def graph(obj, targets, output_format, status):
         # Prevent drawing an empty graph
         if not matches:
             raise GWFError("Non of the targets was found in the workflow")
+    status_dict = None
     if status:
         status_dict = get_targets_status(obj, graph, matches)
 
     if output_format == "svg":
-        dot = Digraph(
-            comment="Dependency Graph",
-            graph_attr={"splines": "curved"},
-            node_attr={"style": "filled"},
-            edge_attr={"arrowsize": ".5"},
-        )
-        for target in visit_all_dependencies(graph, matches):
-            name = target.name
-            color = "white"
-            if status:
-                color = status_colors[status_dict[target]]
-            dot.node(name, name, fillcolor=color)  # shape='parallelogram'
-            for dep_target in graph.dependencies[target]:
-                dot.edge(name, dep_target.name)
-        #if stdout:
-        #    print(dot.source)
-        else:
-            dot.render("dependency_graph.gv", format=output_format)
+        output_str = svg_format(graph, matches, status_dict)
     elif output_format == "sif":
         output_str = sif_format(graph, matches)
         with open("dependency_graph.sif", "w") as fp:
