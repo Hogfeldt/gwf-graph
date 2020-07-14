@@ -92,7 +92,10 @@ def dot_format(graph, matches, conf):
 
 def graphviz_formats(graph, matches, conf):
     dot = create_dot_graph(graph, matches, conf)
-    dot.render("dependency_graph.gv", format=conf.format)
+    output_file = "dependency_graph.gv"
+    if conf.output != sys.stdout:
+        output_file = conf.output
+    dot.render(output_file, format=conf.format)
 
 
 @attr.s
