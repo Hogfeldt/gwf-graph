@@ -1,3 +1,4 @@
+import sys
 import csv
 from functools import partial
 from itertools import chain
@@ -61,7 +62,7 @@ def sif_format(graph, matches, conf):
             lines.append(
                 "{} {} {}".format(name, "dependencies", " ".join(dependencies))
             )
-    return '\n'.join(lines)
+    return "\n".join(lines)
 
 
 def svg_format(graph, matches, conf):
@@ -79,29 +80,33 @@ def svg_format(graph, matches, conf):
         dot.node(name, name, fillcolor=color)  # shape='parallelogram'
         for dep_target in graph.dependencies[target]:
             dot.edge(name, dep_target.name)
-    #if stdout
+    # if stdout
     #    print(dot.source)
     else:
         dot.render("dependency_graph.gv", format="svg")
 
-format_func = {
-        'svg': svg_format,
-        'sif': sif_format,
-        }
-FORMATS = list(format_func.keys())
 
 @attr.s
 class Configurations(object):
-    status_dict = attr.ib()
+    func = attr.ib()
+    output = attr.ib(default=sys.stdout)
+    status_dict = attr.ib(default=None)
+
+
+format_conf = {
+    "svg": Configurations(func=svg_format),
+    "sif": Configurations(func=sif_format),
+}
+FORMATS = list(format_conf.keys())
+
 
 @click.command()
 @click.argument("targets", nargs=-1)
-@click.option(
-    "-f", "--output-format", type=click.Choice(FORMATS), default="svg"
-)
+@click.option("-f", "--output-format", type=click.Choice(FORMATS), default="svg")
+@click.option("-o", "--output", default=None)
 @click.option("--status/--no-status", default=False)
 @click.pass_obj
-def graph(obj, targets, output_format, status):
+def graph(obj, targets, output_format, output, status):
     graph = Graph.from_config(obj)
 
     # If targets supplyed only show dependencies for thoes targets
@@ -113,12 +118,17 @@ def graph(obj, targets, output_format, status):
         if not matches:
             raise GWFError("Non of the targets was found in the workflow")
 
-    conf = Configurations(status_dict=None)
+    conf = format_conf[output_format]
 
     if status:
         conf.status_dict = get_targets_status(obj, graph, matches)
+    if output:
+        conf.output = output
 
-    output_str = format_func[output_format](graph, matches, conf)
-    print(output_str)
-    #with open("dependency_graph.sif", "w") as fp:
-    #    fp.write(output_str)
+    output_str = conf.func(graph, matches, conf)
+    if output_str:
+        if conf.output == sys.stdout:
+            print(output_str)
+        else:
+            with open(conf.output, "w") as fp:
+                fp.write(output_str)
