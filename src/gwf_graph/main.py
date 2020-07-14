@@ -51,6 +51,18 @@ status_colors = {
 }
 
 
+def sif_format(graph, matches):
+    lines = list()
+    for target in visit_all_dependencies(graph, matches):
+        name = target.name
+        dependencies = list(map(lambda d: d.name, graph.dependencies[target]))
+        if dependencies:
+            lines.append(
+                "{} {} {}".format(name, "dependencies", " ".join(dependencies))
+            )
+    return '\n'.join(lines)
+
+
 @click.command()
 @click.argument("targets", nargs=-1)
 @click.option(
@@ -92,16 +104,6 @@ def graph(obj, targets, output_format, status):
         else:
             dot.render("dependency_graph.gv", format=output_format)
     elif output_format == "sif":
-        lines = list()
-        for target in visit_all_dependencies(graph, matches):
-            name = target.name
-            dependencies = list(map(lambda d: d.name, graph.dependencies[target]))
-            if dependencies:
-                lines.append(
-                    "{} {} {}".format(name, "dependencies", " ".join(dependencies))
-                )
-        #if stdout:
-        #    print("\n".join(lines))
-        else:
-            with open("dependency_graph.sif", "w") as fp:
-                fp.write("\n".join(lines))
+        output_str = sif_format(graph, matches)
+        with open("dependency_graph.sif", "w") as fp:
+            fp.write(output_str)
