@@ -2,6 +2,7 @@ import sys
 import csv
 from functools import partial
 from itertools import chain
+from collections import defaultdict
 
 import click
 from graphviz import Digraph
@@ -64,8 +65,7 @@ def sif_format(graph, matches, conf):
             )
     return "\n".join(lines)
 
-
-def svg_format(graph, matches, conf):
+def create_dot_graph(graph, matches, conf):
     dot = Digraph(
         comment="Dependency Graph",
         graph_attr={"splines": "curved"},
@@ -80,10 +80,15 @@ def svg_format(graph, matches, conf):
         dot.node(name, name, fillcolor=color)  # shape='parallelogram'
         for dep_target in graph.dependencies[target]:
             dot.edge(name, dep_target.name)
-    # if stdout
-    #    print(dot.source)
-    else:
-        dot.render("dependency_graph.gv", format="svg")
+    return dot
+
+def dot_format(graph, matches, conf):
+    dot = create_dot_graph(graph, matches, conf)
+    return dot.source
+
+def svg_format(graph, matches, conf):
+    dot = create_dot_graph(graph, matches, conf)
+    dot.render("dependency_graph.gv", format="svg")
 
 
 @attr.s
@@ -96,6 +101,7 @@ class Configurations(object):
 format_conf = {
     "svg": Configurations(func=svg_format),
     "sif": Configurations(func=sif_format),
+    "dot": Configurations(func=dot_format)
 }
 FORMATS = list(format_conf.keys())
 
