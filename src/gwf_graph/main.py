@@ -57,8 +57,9 @@ status_colors = {
     "--output-type", type=click.Choice(["graphviz", "cytoscape"]), default="graphviz"
 )
 @click.option("--status/--no-status", default=False)
+@click.option("--stdout/--no-stdout", default=False)
 @click.pass_obj
-def graph(obj, targets, output_type, status):
+def graph(obj, targets, output_type, status, stdout):
     graph = Graph.from_config(obj)
 
     # If targets supplyed only show dependencies for thoes targets
@@ -87,12 +88,21 @@ def graph(obj, targets, output_type, status):
             dot.node(name, name, fillcolor=color)  # shape='parallelogram'
             for dep_target in graph.dependencies[target]:
                 dot.edge(name, dep_target.name)
-        dot.render("dependency_graph.gv")
+        if stdout:
+            print(dot.source)
+        else:
+            dot.render("dependency_graph.gv")
     elif output_type == "cytoscape":
-        with open("dependency_graph.sif", "w") as fp:
-            writer = csv.writer(fp, delimiter=" ")
-            for target in visit_all_dependencies(graph, matches):
-                name = target.name
-                dependencies = list(map(lambda d: d.name, graph.dependencies[target]))
-                if dependencies:
-                    writer.writerow([name, "dependencies"] + dependencies)
+        lines = list()
+        for target in visit_all_dependencies(graph, matches):
+            name = target.name
+            dependencies = list(map(lambda d: d.name, graph.dependencies[target]))
+            if dependencies:
+                lines.append(
+                    "{} {} {}".format(name, "dependencies", " ".join(dependencies))
+                )
+        if stdout:
+            print("\n".join(lines))
+        else:
+            with open("dependency_graph.sif", "w") as fp:
+                fp.write("\n".join(lines))
