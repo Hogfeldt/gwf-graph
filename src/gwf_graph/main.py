@@ -5,6 +5,7 @@ from itertools import chain
 from collections import defaultdict
 
 import click
+import graphviz
 from graphviz import Digraph
 import attr
 
@@ -65,6 +66,7 @@ def sif_format(graph, matches, conf):
             )
     return "\n".join(lines)
 
+
 def create_dot_graph(graph, matches, conf):
     dot = Digraph(
         comment="Dependency Graph",
@@ -82,28 +84,43 @@ def create_dot_graph(graph, matches, conf):
             dot.edge(name, dep_target.name)
     return dot
 
+
 def dot_format(graph, matches, conf):
     dot = create_dot_graph(graph, matches, conf)
     return dot.source
 
-def svg_format(graph, matches, conf):
+
+def graphviz_formats(graph, matches, conf):
     dot = create_dot_graph(graph, matches, conf)
-    dot.render("dependency_graph.gv", format="svg")
+    dot.render("dependency_graph.gv", format=conf.format)
 
 
 @attr.s
 class Configurations(object):
     func = attr.ib()
+    format = attr.ib(default=None)
     output = attr.ib(default=sys.stdout)
     status_dict = attr.ib(default=None)
 
 
-format_conf = {
-    "svg": Configurations(func=svg_format),
-    "sif": Configurations(func=sif_format),
-    "dot": Configurations(func=dot_format)
-}
-FORMATS = list(format_conf.keys())
+def default_conf():
+    return Configurations(func=graphviz_formats)
+
+
+format_conf = defaultdict(
+    default_conf,
+    {"sif": Configurations(func=sif_format), "dot": Configurations(func=dot_format),},
+)
+FORMATS = set(format_conf.keys()) | graphviz.backend.FORMATS
+
+
+def output_result(conf, output_str):
+    if output_str:
+        if conf.output == sys.stdout:
+            print(output_str)
+        else:
+            with open(conf.output, "w") as fp:
+                fp.write(output_str)
 
 
 @click.command()
@@ -125,6 +142,7 @@ def graph(obj, targets, output_format, output, status):
             raise GWFError("Non of the targets was found in the workflow")
 
     conf = format_conf[output_format]
+    conf.format = output_format  # necessary for defaulting to graphviz formats
 
     if status:
         conf.status_dict = get_targets_status(obj, graph, matches)
@@ -132,9 +150,4 @@ def graph(obj, targets, output_format, output, status):
         conf.output = output
 
     output_str = conf.func(graph, matches, conf)
-    if output_str:
-        if conf.output == sys.stdout:
-            print(output_str)
-        else:
-            with open(conf.output, "w") as fp:
-                fp.write(output_str)
+    output_result(conf, output_str)
