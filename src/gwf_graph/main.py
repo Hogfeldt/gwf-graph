@@ -33,6 +33,16 @@ def visit_all_dependencies(graph, matches):
         yield target
 
 
+def get_targets_status(obj, graph, matches):
+    status_dict = dict()
+    backend_cls = Backend.from_config(obj)
+    with backend_cls() as backend:
+        scheduler = Scheduler(graph, backend)
+        for target in visit_all_dependencies(graph, matches):
+            status_dict[target] = scheduler.status(target)
+    return status_dict
+
+
 status_colors = {
     TargetStatus.SHOULDRUN: "purple",
     TargetStatus.SUBMITTED: "yellow",
@@ -60,13 +70,7 @@ def graph(obj, targets, output_type, status):
         if not matches:
             raise GWFError("Non of the targets was found in the workflow")
     if status:
-        status_dict = dict()
-        # This plugin only works for SlurmBackend
-        backend_cls = Backend.from_config(obj)
-        with backend_cls() as backend:
-            scheduler = Scheduler(graph, backend)
-            for target in matches:
-                status_dict[target] = scheduler.status(target)
+        status_dict = get_targets_status(obj, graph, matches)
 
     if output_type == "graphviz":
         dot = Digraph(
