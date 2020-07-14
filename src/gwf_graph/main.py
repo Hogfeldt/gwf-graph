@@ -54,12 +54,11 @@ status_colors = {
 @click.command()
 @click.argument("targets", nargs=-1)
 @click.option(
-    "--output-type", type=click.Choice(["graphviz", "sif"]), default="graphviz"
+    "-f", "--output-format", type=click.Choice(["svg", "sif"]), default="svg"
 )
 @click.option("--status/--no-status", default=False)
-@click.option("--stdout/--no-stdout", default=False)
 @click.pass_obj
-def graph(obj, targets, output_type, status, stdout):
+def graph(obj, targets, output_format, status):
     graph = Graph.from_config(obj)
 
     # If targets supplyed only show dependencies for thoes targets
@@ -73,7 +72,7 @@ def graph(obj, targets, output_type, status, stdout):
     if status:
         status_dict = get_targets_status(obj, graph, matches)
 
-    if output_type == "graphviz":
+    if output_format == "svg":
         dot = Digraph(
             comment="Dependency Graph",
             graph_attr={"splines": "curved"},
@@ -88,11 +87,11 @@ def graph(obj, targets, output_type, status, stdout):
             dot.node(name, name, fillcolor=color)  # shape='parallelogram'
             for dep_target in graph.dependencies[target]:
                 dot.edge(name, dep_target.name)
-        if stdout:
-            print(dot.source)
+        #if stdout:
+        #    print(dot.source)
         else:
-            dot.render("dependency_graph.gv")
-    elif output_type == "sif":
+            dot.render("dependency_graph.gv", format=output_format)
+    elif output_format == "sif":
         lines = list()
         for target in visit_all_dependencies(graph, matches):
             name = target.name
@@ -101,8 +100,8 @@ def graph(obj, targets, output_type, status, stdout):
                 lines.append(
                     "{} {} {}".format(name, "dependencies", " ".join(dependencies))
                 )
-        if stdout:
-            print("\n".join(lines))
+        #if stdout:
+        #    print("\n".join(lines))
         else:
             with open("dependency_graph.sif", "w") as fp:
                 fp.write("\n".join(lines))
