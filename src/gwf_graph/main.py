@@ -10,6 +10,7 @@ from gwf.filtering import filter_names
 from gwf.exceptions import GWFError
 from gwf.backends import Backend
 
+
 def dfs(graph, root, visited={}):
     path = []
 
@@ -31,10 +32,13 @@ def visit_all_dependencies(graph, matches):
     for target in chain(*paths):
         yield target
 
-status_colors = {TargetStatus.SHOULDRUN: 'purple', 
-        TargetStatus.SUBMITTED: 'yellow', 
-        TargetStatus.RUNNING: 'blue', 
-        TargetStatus.COMPLETED: 'green'}
+
+status_colors = {
+    TargetStatus.SHOULDRUN: "purple",
+    TargetStatus.SUBMITTED: "yellow",
+    TargetStatus.RUNNING: "blue",
+    TargetStatus.COMPLETED: "green",
+}
 
 
 @click.command()
@@ -42,7 +46,7 @@ status_colors = {TargetStatus.SHOULDRUN: 'purple',
 @click.option(
     "--output-type", type=click.Choice(["graphviz", "cytoscape"]), default="graphviz"
 )
-@click.option('--status/--no-status', default=False)
+@click.option("--status/--no-status", default=False)
 @click.pass_obj
 def graph(obj, targets, output_type, status):
     graph = Graph.from_config(obj)
@@ -68,12 +72,12 @@ def graph(obj, targets, output_type, status):
         dot = Digraph(
             comment="Dependency Graph",
             graph_attr={"splines": "curved"},
-            node_attr={'style': 'filled'},
+            node_attr={"style": "filled"},
             edge_attr={"arrowsize": ".5"},
         )
         for target in visit_all_dependencies(graph, matches):
             name = target.name
-            color = 'white'
+            color = "white"
             if status:
                 color = status_colors[status_dict[target]]
             dot.node(name, name, fillcolor=color)  # shape='parallelogram'
