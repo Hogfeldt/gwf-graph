@@ -54,7 +54,7 @@ status_colors = {
 @click.command()
 @click.argument("targets", nargs=-1)
 @click.option(
-    "--output-type", type=click.Choice(["graphviz", "cytoscape"]), default="graphviz"
+    "--output-type", type=click.Choice(["graphviz", "sif"]), default="graphviz"
 )
 @click.option("--status/--no-status", default=False)
 @click.option("--stdout/--no-stdout", default=False)
@@ -92,7 +92,7 @@ def graph(obj, targets, output_type, status, stdout):
             print(dot.source)
         else:
             dot.render("dependency_graph.gv")
-    elif output_type == "cytoscape":
+    elif output_type == "sif":
         lines = list()
         for target in visit_all_dependencies(graph, matches):
             name = target.name
