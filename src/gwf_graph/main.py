@@ -4,6 +4,7 @@ from itertools import chain
 
 import click
 from graphviz import Digraph
+import attr
 
 from gwf.core import Graph, Scheduler, TargetStatus
 from gwf.filtering import filter_names
@@ -51,7 +52,7 @@ status_colors = {
 }
 
 
-def sif_format(graph, matches):
+def sif_format(graph, matches, conf):
     lines = list()
     for target in visit_all_dependencies(graph, matches):
         name = target.name
@@ -63,7 +64,7 @@ def sif_format(graph, matches):
     return '\n'.join(lines)
 
 
-def svg_format(graph, matches, status_dict):
+def svg_format(graph, matches, conf):
     dot = Digraph(
         comment="Dependency Graph",
         graph_attr={"splines": "curved"},
@@ -73,8 +74,8 @@ def svg_format(graph, matches, status_dict):
     for target in visit_all_dependencies(graph, matches):
         name = target.name
         color = "white"
-        if status_dict != None:
-            color = status_colors[status_dict[target]]
+        if conf.status_dict != None:
+            color = status_colors[conf.status_dict[target]]
         dot.node(name, name, fillcolor=color)  # shape='parallelogram'
         for dep_target in graph.dependencies[target]:
             dot.edge(name, dep_target.name)
@@ -83,10 +84,20 @@ def svg_format(graph, matches, status_dict):
     else:
         dot.render("dependency_graph.gv", format="svg")
 
+format_func = {
+        'svg': svg_format,
+        'sif': sif_format,
+        }
+FORMATS = list(format_func.keys())
+
+@attr.s
+class Configurations(object):
+    status_dict = attr.ib()
+
 @click.command()
 @click.argument("targets", nargs=-1)
 @click.option(
-    "-f", "--output-format", type=click.Choice(["svg", "sif"]), default="svg"
+    "-f", "--output-format", type=click.Choice(FORMATS), default="svg"
 )
 @click.option("--status/--no-status", default=False)
 @click.pass_obj
@@ -101,13 +112,13 @@ def graph(obj, targets, output_format, status):
         # Prevent drawing an empty graph
         if not matches:
             raise GWFError("Non of the targets was found in the workflow")
-    status_dict = None
-    if status:
-        status_dict = get_targets_status(obj, graph, matches)
 
-    if output_format == "svg":
-        output_str = svg_format(graph, matches, status_dict)
-    elif output_format == "sif":
-        output_str = sif_format(graph, matches)
-        with open("dependency_graph.sif", "w") as fp:
-            fp.write(output_str)
+    conf = Configurations(status_dict=None)
+
+    if status:
+        conf.status_dict = get_targets_status(obj, graph, matches)
+
+    output_str = format_func[output_format](graph, matches, conf)
+    print(output_str)
+    #with open("dependency_graph.sif", "w") as fp:
+    #    fp.write(output_str)

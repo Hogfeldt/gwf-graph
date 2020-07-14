@@ -9,7 +9,7 @@ setup(
     package_dir={"": "src"},
     entry_points={"gwf.plugins": ["graph = gwf_graph.main:graph"]},
     python_requires=">=3.6",
-    install_requires=["click", "gwf>=1.7.2", "graphviz",],
+    install_requires=["click", "gwf>=1.7.2", "graphviz", "attrs"],
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
