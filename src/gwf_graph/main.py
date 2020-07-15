@@ -30,11 +30,33 @@ def dfs(graph, root, visited={}):
     return path
 
 
-def visit_all_dependencies(graph, matches):
+def bfs(graph, root, visited={}):
+    queue = [root]
+    path = []
+
+    while queue:
+        node = queue.pop(0)
+        if node not in visited:
+            visited.add(node)
+            for dep in graph.dependencies[node]:
+                queue.append()
+            path.append(node)
+    return path
+
+
+def visit_all_dependencies(func, graph, matches):
     visited = set()
-    paths = map(partial(dfs, graph, visited=visited), matches)
+    paths = map(partial(func, graph, visited=visited), matches)
     for target in chain(*paths):
         yield target
+
+
+def visit_all_dependencies_bfs(graph, matches):
+    yield from visit_all_dependencies(bfs, graph, matches)
+
+
+def visit_all_dependencies_dfs(graph, matches):
+    yield from visit_all_dependencies(dfs, graph, matches)
 
 
 def get_targets_status(obj, graph, matches):
@@ -42,7 +64,7 @@ def get_targets_status(obj, graph, matches):
     backend_cls = Backend.from_config(obj)
     with backend_cls() as backend:
         scheduler = Scheduler(graph, backend)
-        for target in visit_all_dependencies(graph, matches):
+        for target in visit_all_dependencies_dfs(graph, matches):
             status_dict[target] = scheduler.status(target)
     return status_dict
 
@@ -57,7 +79,7 @@ status_colors = {
 
 def sif_format(graph, matches, conf):
     lines = list()
-    for target in visit_all_dependencies(graph, matches):
+    for target in visit_all_dependencies_dfs(graph, matches):
         name = target.name
         dependencies = list(map(lambda d: d.name, graph.dependencies[target]))
         if dependencies:
@@ -74,7 +96,7 @@ def create_dot_graph(graph, matches, conf):
         node_attr={"style": "filled"},
         edge_attr={"arrowsize": ".5"},
     )
-    for target in visit_all_dependencies(graph, matches):
+    for target in visit_all_dependencies_dfs(graph, matches):
         name = target.name
         color = "white"
         if conf.status_dict != None:
@@ -104,6 +126,7 @@ class Configurations(object):
     format = attr.ib(default=None)
     output = attr.ib(default=sys.stdout)
     status_dict = attr.ib(default=None)
+    compact = attr.ib(default=False)
 
 
 def default_conf():
@@ -118,12 +141,13 @@ FORMATS = set(format_conf.keys()) | graphviz.backend.FORMATS
 
 
 def output_result(conf, output_str):
-    if output_str:
-        if conf.output == sys.stdout:
-            print(output_str)
-        else:
-            with open(conf.output, "w") as fp:
-                fp.write(output_str)
+    if not output_str:
+        return
+    if conf.output == sys.stdout:
+        print(output_str)
+    else:
+        with open(conf.output, "w") as fp:
+            fp.write(output_str)
 
 
 @click.command()
@@ -131,8 +155,9 @@ def output_result(conf, output_str):
 @click.option("-f", "--output-format", type=click.Choice(FORMATS), default="svg")
 @click.option("-o", "--output", default=None)
 @click.option("--status/--no-status", default=False)
+@click.option("--compact/--no-compact", default=False)
 @click.pass_obj
-def graph(obj, targets, output_format, output, status):
+def graph(obj, targets, output_format, output, status, compact):
     graph = Graph.from_config(obj)
 
     # If targets supplyed only show dependencies for thoes targets
@@ -151,6 +176,8 @@ def graph(obj, targets, output_format, output, status):
         conf.status_dict = get_targets_status(obj, graph, matches)
     if output:
         conf.output = output
+    if compact:
+        conf.compact = compact
 
     output_str = conf.func(graph, matches, conf)
     output_result(conf, output_str)
