@@ -89,6 +89,42 @@ def sif_format(graph, matches, conf):
     return "\n".join(lines)
 
 
+def more_than_n_children(graph, n, target):
+    return len(graph.dependencies[target]) > n
+
+
+def have_multiple_children(graph, target):
+    return more_than_n_children(graph, target, 1)
+
+
+def follow_simple_path(graph, init):
+    path = list()
+
+    def dfs_inner(node):
+        if have_multiple_children(node):
+            return
+        for dep in graph.dependencies[node]:
+            dfs_inner(dep)
+        path.append(node)
+
+    dfs_inner(root)
+    return path
+
+
+# TODO: This function is not finished
+def fint_parallel_paths(graph, matches):
+    candidats = dict()
+    spitting_targets = filter(
+        partial(have_many_children, graph, 4),
+        visit_all_dependencies_bfs(graph, matches),
+    )
+    for target in spitting_targets:
+        candidats[target] = [
+            follow_simple_path(dep) for dep in graph.dependencies[target]
+        ]
+    pass
+
+
 def create_dot_graph(graph, matches, conf):
     dot = Digraph(
         comment="Dependency Graph",
